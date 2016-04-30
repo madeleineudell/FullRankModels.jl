@@ -1,5 +1,5 @@
 module FullRankModels
 
-# package code goes here
+include("gfrm.jl")
 
 end # module
