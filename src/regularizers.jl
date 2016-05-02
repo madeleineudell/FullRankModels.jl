@@ -45,3 +45,24 @@ function prox!(r::TraceNormReg, W::AbstractArray, alpha::Number)
     end
     W
 end
+
+# Trace norm
+type TraceNormConstraint<:ProductRegularizer
+    scale::Float64
+end
+TraceNormReg() = TraceNormReg(1)
+scale(r::TraceNormReg) = r.scale
+scale!(r::TraceNormReg, newscale::Number) = (r.scale = newscale)
+
+function evaluate(r::TraceNormReg, W::AbstractArray)
+    sum(diag(W))/2 <= r.scale ? 0 : Inf
+end
+
+# note: this prox does *not* project onto the PSD cone
+# that's ok in prisma, b/c the other regularizer does it
+function prox!(r::TraceNormReg, W::AbstractArray, alpha::Number)
+    for i=1:size(W,1)
+        W[i,i] -= r.scale*alpha/2
+    end
+    W
+end

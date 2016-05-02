@@ -1,6 +1,6 @@
-using LowRankModels
+import LowRankModels.parameter_estimate
 
-export GFRM
+export GFRM, parameter_estimate
 
 # todo
 # * estimate lipshitz constant more reasonably
@@ -70,5 +70,4 @@ function GLRM(gfrm::GFRM, k::Int=0; tol=1e-5)
 		    	X = X, Y = Y)
 end
 
-parameter_estimate(glrm::GLRM) = (glrm.X, glrm.Y)
 parameter_estimate(gfrm::GFRM) = gfrm.W
