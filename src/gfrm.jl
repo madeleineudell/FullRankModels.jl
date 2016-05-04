@@ -1,4 +1,4 @@
-import LowRankModels.parameter_estimate
+import LowRankModels: parameter_estimate, ObsArray, AbstractGLRM, Loss, QuadReg, GLRM
 
 export GFRM, parameter_estimate
 

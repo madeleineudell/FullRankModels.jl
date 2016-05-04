@@ -1,86 +1,99 @@
-### Fit a full rank model with PRISMA
-import FirstOrderOptimization: 
+### Fit a full rank model with sketched Frank Wolfe
 
-export PrismaParams, PrismaStepsize, fit!, PrismaParams
+# todo: make it work for mpca
 
-defaultPrismaParams = PrismaParams(stepsize=PrismaStepsize(Inf), 
-                                   maxiter=100, 
-                                   verbose=1,
-                                   reltol=1e-5)
+import FirstOrderOptimization: frank_wolfe_sketched, FrankWolfeParams, DecreasingStepSize,
+                               AsymmetricSketch, IndexingOperator, LowRankOperator
+import LowRankModels: fit!, ConvergenceHistory, get_yidxs, grad, evaluate
+import Base: axpy!, scale!
+
+export fit!, FrankWolfeParams
+
+defaultFrankWolfeParams = FrankWolfeParams(100, 1e-2, DecreasingStepSize(2,1))
 
 ### FITTING
-function fit!(gfrm::GFRM, params::PrismaParams = defaultPrismaParams;
-			  ch::ConvergenceHistory=ConvergenceHistory("PrismaGFRM"), 
+function fit!(gfrm::GFRM, params::FrankWolfeParams = defaultFrankWolfeParams;
+			  ch::ConvergenceHistory=ConvergenceHistory("FrankWolfeGFRM"), 
 			  verbose=true,
 			  kwargs...)
 
-    # we're closing over yidxs and gfrm and m and n
+    # the functions below close over all this problem data
     yidxs = get_yidxs(gfrm.losses)
     d = maximum(yidxs[end])
     m,n = size(gfrm.A)
+    tau = gfrm.r.scale
 
-    # W will be the symmetric parameter; U is the upper right block
-    U(W) = W[1:m, m+1:end]
+    nobs = sum(map(length, gfrm.observed_examples))
+    obs = Array(Int, nobs)
+    iobs = 1
+    for i=1:m
+        for j=gfrm.observed_features[i]
+            obs[iobs] = n*(j-1) + i
+            iobs += 1
+        end
+    end
+    indexing_operator = IndexingOperator(m, n, obs)
+
+    function f(z)
+        obj = 0
+        iobs = 1
+        for i=1:m
+            for j=gfrm.observed_features[i]
+                obj += evaluate(gfrm.losses[j], z[iobs], gfrm.A[i,j])
+                iobs += 1
+            end
+        end
+        return obj
+    end
 
     ## Grad of f
-    function grad_f(W)
-        G = zeros(m,d)
-        Umat = U(W)
-        for j=1:n
-            for i in gfrm.observed_examples[j]
-                # there's a 1/2 b/c 1/2 is coming from the upper right block and 1/2 from the lower left block
-                G[i,yidxs[j]] = .5*grad(gfrm.losses[j], Umat[i,yidxs[j]], gfrm.A[i,j])
+    function grad_f(z)
+        g = zeros(size(z))
+        iobs = 1
+        for i=1:m
+            for j=gfrm.observed_features[i]
+                g[iobs] = grad(gfrm.losses[j], z[iobs], gfrm.A[i,j])
+                iobs += 1
             end
         end
-        return [zeros(m,m) G; G' zeros(d,d)]
+        return LowRankOperator(indexing_operator, g, transpose = Symbol[:T, :N])
     end
 
-    ## Prox of g
-    prox_g(W, alpha) = prox(gfrm.r, W, alpha)
-
-    ## Prox of h
-    # we're going to use a closure over gfrm.k
-    # to remember what the rank of prox_h(W) was the last time we computed it
-    # in order to avoid calculating too many eigentuples of W
-    function prox_h(W, alpha=0; TOL=1e-10)
-        while gfrm.k < size(W,1)
-            l,v = eigs(Symmetric(W), nev = gfrm.k+1, which=:LR) # v0 = [v zeros(size(W,1), gfrm.k+1 - size(v,2))]
-            if l[end] <= TOL
-                gfrm.k = sum(l.>=TOL)
-                return v*diagm(max(l,0))*v'
-            else
-                gfrm.k = 2*gfrm.k # double the rank and try again
-            end
-        end
-        # else give up on computational cleverness
-        l,v = eig(Symmetric(W))
-        gfrm.k = sum(l.>=TOL)
-        return v*diagm(max(l,0))*v'
+    const_nucnorm(z) = tau # we'll always saturate the constraint, don't bother computing it
+    function min_lin_st_nucnorm_sketched(g, tau)
+        u,s,v = svds(Array(g), nsv=1) # for this case, g is a sparse matrix so representing it is O(m)
+        return LowRankOperator(-tau*u, v')
     end
-
-    obj(W) = objective(gfrm, W, yidxs=yidxs)
+    # I can't think of a pretty way to compute
+    # <g, tilde_x - x> = <A'(z-b), u tau v' - x> = <z-b, A(u tau v') - A(x)> = <z-b, A(u tau v') - z>
+    dot_g_w_tx_minus_x(g, Delta, z) = dot(vec(g.factors[2]), g.factors[1]*Delta - z)
+    # we end up computing A*Delta twice with this scheme
+    update_var!(z, Delta, a) = (scale!(z, 1-a); axpy!(a, indexing_operator*Delta, z))
 
     # initialize
-    # lipshitz constant for f (XXX right now a wild guess that makes sense for unscaled quadratic loss)
-    Lf = 2
-    if params.stepsizerule.initial_stepsize == Inf
-        R = sqrt(obj(gfrm.W)*m*n/sum(map(length, gfrm.observed_examples)))/max(gfrm.r.scale,1) # estimate of distance to solution
-        params.stepsizerule.initial_stepsize = 2*R/Lf
-    end
+    z = zeros(nobs)
 
     # recover
     t = time()
-    gfrm.W = PRISMA(gfrm.W, Lf,
-           grad_f,
-           prox_g,
-           prox_h,
-           obj,
-           params)
+    X_sketched = frank_wolfe_sketched(
+        z,
+        f, grad_f,
+        const_nucnorm,
+        tau,
+        min_lin_st_nucnorm_sketched,
+        AsymmetricSketch(m,n,gfrm.k),
+        FrankWolfeParams(100, 1e-2, DecreasingStepSize(2,1)),
+        ch,
+        dot_g_w_tx_minus_x = dot_g_w_tx_minus_x,
+        update_var! = update_var!,
+        LB = 0,
+        verbose=true
+        )
 
-    # t = time() - t
-    # update!(ch, t, obj(W))
+    t = time() - t
+    update_ch!(ch, t, f(z))
 
-    gfrm.U = U(gfrm.W) 
+    # gfrm.U = X_sketched
 
-    return gfrm.U, ch
+    return X_sketched, ch
 end

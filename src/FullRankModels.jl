@@ -1,9 +1,9 @@
 module FullRankModels
 
-using LowRankModels
+import LowRankModels: ConvergenceHistory, update_ch!, fit!
 
-include("gfrm.jl")
 include("regularizers.jl")
+include("gfrm.jl")
 include("evaluate_fit.jl")
 
 include("algorithms/prisma.jl")

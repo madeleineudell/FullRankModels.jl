@@ -1,4 +1,7 @@
-export ProductRegularizer, MaxNormReg, TraceNormReg,
+import LowRankModels: Regularizer, scale, scale!, evaluate, prox, prox!
+
+export ProductRegularizer, MaxNormReg, TraceNormReg, TraceNormConstraint,
+ scale, scale!, evaluate, prox, prox!
 
 abstract ProductRegularizer<:Regularizer
 prox(r::ProductRegularizer,W::AbstractArray,alpha::Number) = (Wc = copy(W); prox!(r,Wc,alpha))
@@ -50,17 +53,16 @@ end
 type TraceNormConstraint<:ProductRegularizer
     scale::Float64
 end
-TraceNormReg() = TraceNormReg(1)
-scale(r::TraceNormReg) = r.scale
-scale!(r::TraceNormReg, newscale::Number) = (r.scale = newscale)
+TraceNormConstraint() = TraceNormConstraint(1)
+scale(r::TraceNormConstraint) = r.scale
+scale!(r::TraceNormConstraint, newscale::Number) = (r.scale = newscale)
 
-function evaluate(r::TraceNormReg, W::AbstractArray)
+function evaluate(r::TraceNormConstraint, W::AbstractArray)
     sum(diag(W))/2 <= r.scale ? 0 : Inf
 end
 
 # note: this prox does *not* project onto the PSD cone
-# that's ok in prisma, b/c the other regularizer does it
-function prox!(r::TraceNormReg, W::AbstractArray, alpha::Number)
+function prox!(r::TraceNormConstraint, W::AbstractArray, alpha::Number)
     for i=1:size(W,1)
         W[i,i] -= r.scale*alpha/2
     end
