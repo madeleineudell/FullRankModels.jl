@@ -1,6 +1,6 @@
-import LowRankModels: parameter_estimate, ObsArray, AbstractGLRM, Loss, QuadReg, GLRM
+import LowRankModels: parameter_estimate, ObsArray, AbstractGLRM, Loss, QuadReg, GLRM, scale_regularizer!
 
-export GFRM, parameter_estimate
+export GFRM, parameter_estimate, scale_regularizer!
 
 # todo
 # * estimate lipshitz constant more reasonably
@@ -15,12 +15,14 @@ type GFRM<:AbstractGLRM
     observed_features::ObsArray  # for each example, an array telling which features were observed
     observed_examples::ObsArray  # for each feature, an array telling in which examples the feature was observed
     U::AbstractArray{Float64,2}  # Representation of data in numerical space. A ≈ U = X'Y
-    W::AbstractArray{Float64,2}  # Representation of data in symmetric space. W = [? U; U' ?]
+    W::AbstractMatrix            # Representation of data in encoded space, depending on algorithm. 
 end
+                                 # for prisma, W = [? U; U' ?]
+                                 # for frank wolfe, W = LowRankOperator(X', Y)
 
 ### From GFRMs to GLRMs and back
 
-function GFRM(glrm::GLRM; force=false, use_reg_scale=true)
+function GFRM(glrm::GLRM; force=false, use_reg_scale=true, init_prisma=false)
     if !force # error check unless we force a conversion
     	if !isa(glrm.rx, QuadReg)
     		error("I don't know how to convert the regularization on X, $(typeof(glrm.rx)), into a regularizer for a GFRM")
@@ -41,8 +43,15 @@ function GFRM(glrm::GLRM; force=false, use_reg_scale=true)
     end
 
     # translate the low rank variables X and Y into full rank variables U and W
-    U = glrm.X'*glrm.Y
-    W = [glrm.X glrm.Y]'*[glrm.X glrm.Y]
+    if init_prisma
+        U = glrm.X'*glrm.Y
+        W = [glrm.X glrm.Y]'*[glrm.X glrm.Y]
+    else
+        m = size(glrm.X,2)
+        d = size(glrm.Y,2)
+        U = spzeros(0,0)
+        W = spzeros(0,0)
+    end
     return GFRM(glrm.A, glrm.losses, r, glrm.k,
 		    	glrm.observed_features, glrm.observed_examples,
 		    	U, W)
@@ -70,4 +79,9 @@ function GLRM(gfrm::GFRM, k::Int=0; tol=1e-5)
 		    	X = X, Y = Y)
 end
 
-parameter_estimate(gfrm::GFRM) = gfrm.W
+parameter_estimate(gfrm::GFRM) = (gfrm.W,)
+
+function scale_regularizer!(gfrm::GFRM, newscale::Number)
+    scale!(gfrm.r, newscale)
+    return gfrm  
+end

@@ -1,4 +1,5 @@
 import LowRankModels: objective
+import FirstOrderOptimization: LowRankOperator
 
 export objective
 
@@ -26,3 +27,21 @@ end
 function objective(gfrm::GFRM)
     objective(gfrm::GFRM, gfrm.W)
 end
+
+function objective(gfrm::GFRM, W::LowRankOperator; 
+                   yidxs=get_yidxs(gfrm.losses),
+                   include_regularization=true)
+    m,n = size(gfrm.A)
+    err = 0.0
+    for j=1:n
+        for i in gfrm.observed_examples[j]
+            err += evaluate(gfrm.losses[j], W[i,yidxs[j]], gfrm.A[i,j])
+        end
+    end
+    if include_regularization
+        err += evaluate(gfrm.r, W)
+    end
+    return err
+end
+
+# objective(gfrm::GFRM, args...; kwargs...) = objective(gfrm, gfrm.W, args...; kwargs...)

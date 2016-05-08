@@ -23,7 +23,7 @@ function fit!(gfrm::GFRM, params::FrankWolfeParams = FrankWolfeParams();
     yidxs = get_yidxs(gfrm.losses)
     d = maximum(yidxs[end])
     m,n = size(gfrm.A)
-    tau = gfrm.r.scale
+    alpha = gfrm.r.scale
 
     nobs = sum(map(length, gfrm.observed_examples))
     obs = Array(Int, nobs)
@@ -62,16 +62,12 @@ function fit!(gfrm::GFRM, params::FrankWolfeParams = FrankWolfeParams();
         return LowRankOperator(indexing_operator, g, transpose = Symbol[:T, :N])
     end
 
-    const_nucnorm(z) = tau # we'll always saturate the constraint, don't bother computing it
-    function min_lin_st_nucnorm_sketched(G, tau)
+    const_nucnorm(z) = alpha # we'll always saturate the constraint, don't bother computing it
+    # returns solution, optval of min <G, Delta> st ||Delta||_* \leq alpha
+    function min_lin_st_nucnorm_sketched(G, alpha)
         u,s,v = svds(Array(G), nsv=1) # for this case, g is a sparse matrix so representing it is O(m)
-        return LowRankOperator(-tau*u, v')
+        return LowRankOperator(-alpha*u, v')
     end
-    # I can't think of a pretty way to compute
-    # <g, tilde_x - x> = <A'(z-b), u tau v' - x> = <z-b, A(u tau v') - A(x)> = <z-b, A(u tau v') - z>
-    dot_g_w_tx_minus_x(G, Delta, z) = dot(vec(G.factors[2]), G.factors[1]*Delta - z)
-    # we end up computing A*Delta twice with this scheme
-    update_var!(z, Delta, a) = (scale!(z, 1-a); axpy!(a, indexing_operator*Delta, z))
 
     # initialize
     z = zeros(nobs)
@@ -82,13 +78,11 @@ function fit!(gfrm::GFRM, params::FrankWolfeParams = FrankWolfeParams();
         z,
         f, grad_f,
         const_nucnorm,
-        tau,
+        alpha,
         min_lin_st_nucnorm_sketched,
         AsymmetricSketch(m,n,gfrm.k),
         params,
         ch,
-        dot_g_w_tx_minus_x = dot_g_w_tx_minus_x,
-        update_var! = update_var!,
         LB = 0,
         verbose=true
         )
@@ -96,7 +90,7 @@ function fit!(gfrm::GFRM, params::FrankWolfeParams = FrankWolfeParams();
     t = time() - t
     update_ch!(ch, t, f(z))
 
-    # gfrm.U = X_sketched
+    gfrm.W = X_sketched
 
     return X_sketched, ch
 end
