@@ -83,7 +83,6 @@ function fit!(gfrm::GFRM, params::FrankWolfeParams = FrankWolfeParams();
         AsymmetricSketch(m,n,gfrm.k),
         params,
         ch,
-        LB = 0,
         verbose=true
         )
 
