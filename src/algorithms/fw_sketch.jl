@@ -25,11 +25,14 @@ function fit!(gfrm::GFRM, params::FrankWolfeParams = FrankWolfeParams();
     m,n = size(gfrm.A)
     alpha = gfrm.r.scale
 
-    nobs = sum(map(length, gfrm.observed_examples))
+    nobsj = map(length, gfrm.observed_examples)
+    nobs = sum(nobsj)
+    # start_obsj = append!([0], cumsum(nobsj)[1:end-1])
+    # end_obsj = start_obsj+nobsj
     obs = Array(Int, nobs)
     iobs = 1
-    for i in 1:m
-        for j in gfrm.observed_features[i]
+    for j=1:n
+        for i=gfrm.observed_examples[j]
             obs[iobs] = m*(j-1) + i
             iobs += 1
         end
@@ -39,9 +42,10 @@ function fit!(gfrm::GFRM, params::FrankWolfeParams = FrankWolfeParams();
     function f(z)
         obj = 0
         iobs = 1
-        for i=1:m
-            for j=gfrm.observed_features[i]
-                obj += evaluate(gfrm.losses[j], z[iobs], gfrm.A[i,j])
+        for j=1:n
+            lj = gfrm.losses[j]
+            for i=gfrm.observed_examples[j]
+                obj += evaluate(lj, z[iobs], gfrm.A[i,j])
                 iobs += 1
             end
         end
@@ -49,12 +53,13 @@ function fit!(gfrm::GFRM, params::FrankWolfeParams = FrankWolfeParams();
     end
 
     ## Grad of f
-    function grad_f(z)
-        g = zeros(size(z))
+    function grad_f(z; 
+                    g = Array(Float64, size(z)))
         iobs = 1
-        for i=1:m
-            for j=gfrm.observed_features[i]
-                g[iobs] = grad(gfrm.losses[j], z[iobs], gfrm.A[i,j])
+        for j=1:n
+            lj = gfrm.losses[j]
+            for i=gfrm.observed_examples[j]
+                g[iobs] = grad(lj, z[iobs], gfrm.A[i,j])
                 iobs += 1
             end
         end
@@ -65,7 +70,8 @@ function fit!(gfrm::GFRM, params::FrankWolfeParams = FrankWolfeParams();
     const_nucnorm(z) = alpha # we'll always saturate the constraint, don't bother computing it
     # returns solution, optval of min <G, Delta> st ||Delta||_* \leq alpha
     function min_lin_st_nucnorm_sketched(G, alpha)
-        u,s,v = svds(Array(G), nsv=1) # for this case, g is a sparse matrix so representing it is O(m)
+        ga = Array(G)
+        u,s,v = svds(ga, nsv=1)
         return LowRankOperator(-alpha*u, v')
     end
 
