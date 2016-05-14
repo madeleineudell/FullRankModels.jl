@@ -10,5 +10,6 @@ include("algorithms/prisma.jl")
 include("algorithms/fw_sketch.jl")
 
 include("utilities.jl")
+include("cross_validate.jl")
 
 end # module

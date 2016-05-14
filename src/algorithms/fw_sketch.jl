@@ -3,7 +3,8 @@
 # todo: make it work for mpca
 
 import FirstOrderOptimization: frank_wolfe_sketched, FrankWolfeParams, DecreasingStepSize,
-                               AsymmetricSketch, IndexingOperator, LowRankOperator
+                               AbstractSketch, AsymmetricSketch, 
+                               IndexingOperator, LowRankOperator
 import LowRankModels: fit!, ConvergenceHistory, get_yidxs, grad, evaluate
 import Base: axpy!, scale!
 
@@ -12,6 +13,8 @@ export fit!, FrankWolfeParams
 ### FITTING
 function fit!(gfrm::GFRM, params::FrankWolfeParams = FrankWolfeParams();
 			  ch::ConvergenceHistory=ConvergenceHistory("FrankWolfeGFRM"), 
+              z::AbstractVector = zeros(sum(map(length, gfrm.observed_examples))),
+              sketch::AbstractSketch = AsymmetricSketch(size(gfrm.A)..., gfrm.k),
 			  verbose=true,
 			  kwargs...)
 
@@ -38,6 +41,8 @@ function fit!(gfrm::GFRM, params::FrankWolfeParams = FrankWolfeParams();
         end
     end
     indexing_operator = IndexingOperator(m, n, obs)
+    @assert size(indexing_operator, 1) == nobs
+    @assert length(z) == nobs
 
     function f(z)
         obj = 0
@@ -75,9 +80,6 @@ function fit!(gfrm::GFRM, params::FrankWolfeParams = FrankWolfeParams();
         return LowRankOperator(-alpha*u, v')
     end
 
-    # initialize
-    z = zeros(nobs)
-
     # recover
     t = time()
     X_sketched = frank_wolfe_sketched(
@@ -86,10 +88,10 @@ function fit!(gfrm::GFRM, params::FrankWolfeParams = FrankWolfeParams();
         const_nucnorm,
         alpha,
         min_lin_st_nucnorm_sketched,
-        AsymmetricSketch(m,n,gfrm.k),
+        sketch,
         params,
         ch,
-        verbose=true
+        verbose=verbose
         )
 
     t = time() - t
