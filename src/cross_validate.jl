@@ -37,7 +37,7 @@ function cv_by_iter(glrm::GFRM, holdout_proportion::Number = .1;
     train_error = Array(Float64, niters)
     test_error = Array(Float64, niters)
     if verbose
-        @printf("%12s%12s%12s\n", "train error", "test error", "time")  
+        @printf("%8s%12s%12s%12s\n", "iter", train error", "test error", "time")  
         t0 = time()
     end
     z = zeros(sum(map(length, train_glrm.observed_examples)))
@@ -49,7 +49,7 @@ function cv_by_iter(glrm::GFRM, holdout_proportion::Number = .1;
         train_error[iter] = objective(train_glrm, parameter_estimate(train_glrm)..., include_regularization=false)/ntrain
         test_error[iter] = objective(test_glrm, parameter_estimate(train_glrm)..., include_regularization=false)/ntest
         if verbose
-            @printf("%12.4e%12.4e%12.4e\n", train_error[iter], test_error[iter], time() - t0)
+            @printf("%8d%12.4e%12.4e%12.4e\n", iter, train_error[iter], test_error[iter], time() - t0)
         end
     end
     params.maxiters = niters
