@@ -5,14 +5,14 @@ export cv_by_iter
 
 default_params = FrankWolfeParams() # maxiters = 100, reltol = 1e-10, stepsize = HopefulStepSize(1, 1, .5, 1.2, .01));
 
-function cv_by_iter(glrm::GFRM, holdout_proportion::Number = .1; 
+function cv_by_iter(gfrm::GFRM, holdout_proportion::Number = .1; 
                     params = default_params,
                     ch::ConvergenceHistory = ConvergenceHistory("cv_by_iter"),
+                    z = zeros(sum(map(length, gfrm.observed_examples))),
+                    sketch = AsymmetricSketch(size(gfrm.A)..., gfrm.k),
                     verbose = true)
     # obs = flattenarray(map(ijs->map(j->(ijs[1],j),ijs[2]),zip(1:length(glrm.observed_features),glrm.observed_features)))
-    gfrm = glrm
-    z = zeros(sum(map(length, gfrm.observed_examples)))
-    sketch = AsymmetricSketch(size(gfrm.A)..., gfrm.k)
+    glrm = gfrm
     obs = flatten_observations(glrm.observed_features)
 
     train_observed_features, train_observed_examples, test_observed_features, test_observed_examples = 
