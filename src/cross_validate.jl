@@ -37,7 +37,7 @@ function cv_by_iter(gfrm::GFRM, holdout_proportion::Number = .1;
     train_error = Array(Float64, niters)
     test_error = Array(Float64, niters)
     if verbose
-        @printf("%8s%12s%12s%12s\n", "iter", train error", "test error", "time")  
+        @printf("%8s%12s%12s%12s\n", "iter", "train error", "test error", "time")  
         t0 = time()
     end
     z = zeros(sum(map(length, train_glrm.observed_examples)))
