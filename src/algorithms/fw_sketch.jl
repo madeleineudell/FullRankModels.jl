@@ -3,8 +3,8 @@
 # todo: make it work for mpca
 
 import FirstOrderOptimization: frank_wolfe_sketched, FrankWolfeParams, DecreasingStepSize,
-                               AbstractSketch, AsymmetricSketch, 
-                               IndexingOperator, LowRankOperator
+                               AbstractSketch, AsymmetricSketch,
+                               IndexingOperator, LowRankOperator, mysvds
 import LowRankModels: fit!, ConvergenceHistory, get_yidxs, grad, evaluate
 import Base: axpy!, scale!
 
@@ -12,7 +12,7 @@ export fit!, FrankWolfeParams
 
 ### FITTING
 function fit!(gfrm::GFRM, params::FrankWolfeParams = FrankWolfeParams();
-			  ch::ConvergenceHistory=ConvergenceHistory("FrankWolfeGFRM"), 
+			  ch::ConvergenceHistory=ConvergenceHistory("FrankWolfeGFRM"),
               z::AbstractVector = zeros(sum(map(length, gfrm.observed_examples))),
               sketch::AbstractSketch = AsymmetricSketch(size(gfrm.A)..., gfrm.k),
 			  verbose=true,
@@ -58,7 +58,7 @@ function fit!(gfrm::GFRM, params::FrankWolfeParams = FrankWolfeParams();
     end
 
     ## Grad of f
-    function grad_f(z; 
+    function grad_f(z;
                     g = Array(Float64, size(z)))
         iobs = 1
         for j=1:n
@@ -76,7 +76,7 @@ function fit!(gfrm::GFRM, params::FrankWolfeParams = FrankWolfeParams();
     # returns solution, optval of min <G, Delta> st ||Delta||_* \leq alpha
     function min_lin_st_nucnorm_sketched(G, alpha)
         ga = Array(G)
-        u,s,v = svds(ga, nsv=1)
+        u,s,v = mysvds(ga, nsv=1)
         return LowRankOperator(-alpha*u, v')
     end
 

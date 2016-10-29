@@ -1,3 +1,5 @@
+__precompile__()
+
 module FullRankModels
 
 import LowRankModels: ConvergenceHistory, update_ch!, fit!
