@@ -29,6 +29,7 @@ function fit!(gfrm::GFRM, params::FrankWolfeParams = FrankWolfeParams();
     alpha = gfrm.r.scale
 
     nobsj = map(length, gfrm.observed_examples)
+    startobsj = cumsum(vcat(0, nobsj))
     nobs = sum(nobsj)
     # start_obsj = append!([0], cumsum(nobsj)[1:end-1])
     # end_obsj = start_obsj+nobsj
@@ -46,12 +47,9 @@ function fit!(gfrm::GFRM, params::FrankWolfeParams = FrankWolfeParams();
 
     function f(z)
         obj = 0
-        iobs = 1
         for j=1:n
-            lj = gfrm.losses[j]
-            for i=gfrm.observed_examples[j]
-                obj += evaluate(lj, z[iobs], gfrm.A[i,j])
-                iobs += 1
+            for (iobs,i) in enumerate(gfrm.observed_examples[j])
+                obj += evaluate(gfrm.losses[j], z[startobsj[j]+iobs], gfrm.A[i,j])
             end
         end
         return obj
