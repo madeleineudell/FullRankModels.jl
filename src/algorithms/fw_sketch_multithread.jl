@@ -9,10 +9,10 @@ import FirstOrderOptimization: frank_wolfe_sketched, FrankWolfeParams, Decreasin
 import LowRankModels: fit!, ConvergenceHistory, get_yidxs, grad, evaluate
 import Base: axpy!, scale!
 
-export fit!, FrankWolfeParams
+export fit_sketch!, FrankWolfeParams
 
 ### FITTING
-function fit!(gfrm::GFRM, params::FrankWolfeParams = FrankWolfeParams();
+function fit_sketch!(gfrm::GFRM, params::FrankWolfeParams = FrankWolfeParams();
 			  ch::ConvergenceHistory=ConvergenceHistory("FrankWolfeGFRM"),
         z::AbstractVector = zeros(sum(map(length, gfrm.observed_examples))),
         sketch::AbstractSketch = AsymmetricSketch(size(gfrm.A)..., gfrm.k),
@@ -84,7 +84,7 @@ function fit!(gfrm::GFRM, params::FrankWolfeParams = FrankWolfeParams();
         # @time
         u,s,v = mysvds(ga, nsv=1, tol=tol)
         # u,s,v = mysvds(G, nsv=1) # right now there's no method to directly do svds efficiently on an IndexedLowRankOperator
-        return LowRankOperator(-alpha*u, v')
+        return LowRankOperator(-alpha*u, v'), -alpha*s[1]
     end
 
     # recover

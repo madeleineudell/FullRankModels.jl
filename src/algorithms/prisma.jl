@@ -1,16 +1,16 @@
 ### Fit a full rank model with PRISMA
 import FirstOrderOptimization: PRISMA, PrismaParams, PrismaStepsize
 
-export PrismaParams, PrismaStepsize, fit!, PrismaParams
+export PrismaParams, PrismaStepsize, fit_prisma!, PrismaParams
 
-defaultPrismaParams = PrismaParams(stepsize=PrismaStepsize(Inf), 
-                                   maxiter=100, 
+defaultPrismaParams = PrismaParams(stepsize=PrismaStepsize(Inf),
+                                   maxiter=100,
                                    verbose=1,
                                    reltol=1e-5)
 
 ### FITTING
-function fit!(gfrm::GFRM, params::PrismaParams = defaultPrismaParams;
-			  ch::ConvergenceHistory=ConvergenceHistory("PrismaGFRM"), 
+function fit_prisma!(gfrm::GFRM, params::PrismaParams = defaultPrismaParams;
+			  ch::ConvergenceHistory=ConvergenceHistory("PrismaGFRM"),
 			  verbose=true,
 			  kwargs...)
 
@@ -80,7 +80,7 @@ function fit!(gfrm::GFRM, params::PrismaParams = defaultPrismaParams;
     # t = time() - t
     # update_ch!(ch, t, obj(W))
 
-    gfrm.U = U(gfrm.W) 
+    gfrm.U = U(gfrm.W)
 
     return gfrm.U, ch
 end

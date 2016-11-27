@@ -21,14 +21,14 @@ observed_features, observed_examples = sort_observations(obs,size(P)...)
 
 losses = fill(QuadLoss(1), n)
 reg = TraceNormConstraint(tau)
-gfrm = GFRM(A, losses, reg, k, observed_features, observed_examples, 
+gfrm = GFRM(A, losses, reg, k, observed_features, observed_examples,
 	zeros(m,n), zeros(m+n,m+n))
 
 params = FrankWolfeParams(maxiters = 100, reltol = 1e-10, stepsize = HopefulStepSize(1, 1, .5, 1.2, .01));
 @time X_sketched, ch = fit!(gfrm, params)
 @time X_sketched, ch = fit!(gfrm, params)
 
-error()
+error("comparison with SDP solver not implemented")
 
 Xhat = Array(X_sketched)
 
@@ -37,7 +37,7 @@ U = Variable(m,n)
 W = Variable(m+n, m+n)
 
 obj = sumsquares(P.*(U-A))
-p = minimize(obj, 
+p = minimize(obj,
 	nuclearnorm(U) <= tau)
 solve!(p)
 

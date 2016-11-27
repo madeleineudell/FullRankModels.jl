@@ -1,6 +1,6 @@
-import LowRankModels.copy_estimate
+import LowRankModels: copy_estimate, copy
 
-export copy_estimate
+export copy_estimate, copy
 
 function copy_estimate(g::GFRM)
   return GFRM(g.A,g.losses,g.r,g.k,
