@@ -42,13 +42,13 @@ function fit_sketch!(gfrm::GFRM, params::FrankWolfeParams = FrankWolfeParams();
     @assert size(indexing_operator, 1) == nobs
     @assert length(z) == nobs
 
+    objs = zeros(Threads.nthreads())
     function f(z::Array{Float64,1})
-        objs = zeros(Threads.nthreads())
+        scale!(objs, 0)
         # println("obj")
         # @time
         Threads.@threads for j=1:n
-            objs[Threads.threadid()] +=
-                evaluate(gfrm.losses[j],
+            objs[Threads.threadid()] += evaluate(gfrm.losses[j],
                          z[startobsj[j]:(startobsj[j+1]-1)],
                          gfrm.A[gfrm.observed_examples[j],j])
         end
@@ -66,7 +66,7 @@ function fit_sketch!(gfrm::GFRM, params::FrankWolfeParams = FrankWolfeParams();
         end
         # return G = A'*g
         # LowRankOperator(indexing_operator, g, transpose = Symbol[:T, :N])
-        @show g
+        # @show g
         return IndexedLowRankOperator(indexing_operator, g)
     end
 

@@ -25,11 +25,11 @@ gfrm1 = GFRM(A, losses, reg, k, observed_features, observed_examples,
 	zeros(m,n), zeros(m+n,m+n))
 gfrm2 = gfrm1
 
-params = FrankWolfeParams(maxiters = 10, reltol = 1e-10, stepsize = DecreasingStepSize());
+params = FrankWolfeParams(maxiters = 20, reltol = 1e-10, stepsize = DecreasingStepSize());
 
-# println("frank wolfe")
-#
-# @time X_fw, ch = fit_fw!(gfrm2, copy(params))
+println("frank wolfe")
+
+@time X_fw, ch = fit_fw!(gfrm2, copy(params))
 # @time X_fw, ch = fit_fw!(gfrm2, copy(params))
 
 println("thin frank wolfe")

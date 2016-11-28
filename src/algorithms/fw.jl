@@ -52,7 +52,7 @@ function fit_fw!(gfrm::GFRM, params::FrankWolfeParams = FrankWolfeParams();
                          Float64[X[i,j] for i in gfrm.observed_examples[j]],
                          gfrm.A[gfrm.observed_examples[j],j])
         end
-        return @show obj # sum(objs)
+        return obj # sum(objs)
     end
 
     ## Grad of f
@@ -66,6 +66,7 @@ function fit_fw!(gfrm::GFRM, params::FrankWolfeParams = FrankWolfeParams();
                          gfrm.A[gfrm.observed_examples[j],j])
         end
         # return G = A'*g as a sparse matrix
+        @show g
         G = Array(IndexedLowRankOperator(indexing_operator, g))
         return G
     end
