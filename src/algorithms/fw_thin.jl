@@ -36,34 +36,29 @@ function fit_thin!(gfrm::GFRM, params::FrankWolfeParams = FrankWolfeParams();
     nobs = sum(nobsj)
     obs = Array(Int, nobs)
 
-    #Threads.@threads
-    for j=1:n
+    Threads.@threads for j=1:n
         obs[startobsj[j]:(startobsj[j+1]-1)] = m*(j-1) + gfrm.observed_examples[j]
     end
     indexing_operator = IndexingOperator(m, n, obs)
     @assert size(indexing_operator, 1) == nobs
 
     function f(X::LowRankOperator)
-        #X = Array(X)
-        #objs = zeros(Threads.nthreads())
-        obj = 0
+        objs = zeros(Threads.nthreads())
         # println("obj")
-        # @time Threads.@threads
-        for j=1:n
-            #objs[Threads.threadid()]
-            obj +=
+        # @time
+        Threads.@threads for j=1:n
+            objs[Threads.threadid()]
                 evaluate(gfrm.losses[j],
                          Float64[X[i,j] for i in gfrm.observed_examples[j]],
                          gfrm.A[gfrm.observed_examples[j],j])
         end
-        return @show obj # sum(objs)
+        return sum(objs)
     end
 
     ## Grad of f
     g = Array(Float64,nobs) # working variable for computing gradient; grad_f mutates this
     function grad_f(X::LowRankOperator)
-        #Threads.@threads
-        for j=1:n
+        Threads.@threads for j=1:n
             ii = startobsj[j]:(startobsj[j+1]-1)
             g[ii] = grad(gfrm.losses[j],
                          Float64[X[i,j] for i in gfrm.observed_examples[j]],
