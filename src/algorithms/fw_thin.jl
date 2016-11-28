@@ -47,8 +47,7 @@ function fit_thin!(gfrm::GFRM, params::FrankWolfeParams = FrankWolfeParams();
         # println("obj")
         # @time
         Threads.@threads for j=1:n
-            objs[Threads.threadid()]
-                evaluate(gfrm.losses[j],
+            objs[Threads.threadid()] = evaluate(gfrm.losses[j],
                          Float64[X[i,j] for i in gfrm.observed_examples[j]],
                          gfrm.A[gfrm.observed_examples[j],j])
         end
@@ -65,6 +64,7 @@ function fit_thin!(gfrm::GFRM, params::FrankWolfeParams = FrankWolfeParams();
                          gfrm.A[gfrm.observed_examples[j],j])
         end
         # return G = A'*g as a sparse matrix
+        @show g
         G = Array(IndexedLowRankOperator(indexing_operator, g))
         return G
     end
