@@ -5,7 +5,7 @@ using Convex
 
 srand(1)
 # parameters
-m, n, k = 5, 4, 2
+m, n, k = 20, 20, 2
 
 # generate data
 X0 = randn(m,k)
