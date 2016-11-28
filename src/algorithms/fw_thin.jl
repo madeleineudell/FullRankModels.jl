@@ -32,51 +32,53 @@ function fit_thin!(gfrm::GFRM, params::FrankWolfeParams = FrankWolfeParams();
     alpha = gfrm.r.scale
 
     nobsj = map(length, gfrm.observed_examples)
-    startobsj = cumsum(vcat(0, nobsj))
+    startobsj = cumsum(vcat(1, nobsj))
     nobs = sum(nobsj)
-    # start_obsj = append!([0], cumsum(nobsj)[1:end-1])
-    # end_obsj = start_obsj+nobsj
     obs = Array(Int, nobs)
-    iobs = 1
+
+    #Threads.@threads
     for j=1:n
-        for i=gfrm.observed_examples[j]
-            obs[iobs] = m*(j-1) + i
-            iobs += 1
-        end
+        obs[startobsj[j]:(startobsj[j+1]-1)] = m*(j-1) + gfrm.observed_examples[j]
     end
     indexing_operator = IndexingOperator(m, n, obs)
     @assert size(indexing_operator, 1) == nobs
 
-    function f(X)
+    function f(X::LowRankOperator)
         #X = Array(X)
+        #objs = zeros(Threads.nthreads())
         obj = 0
+        # println("obj")
+        # @time Threads.@threads
         for j=1:n
-            for (iobs,i) in enumerate(gfrm.observed_examples[j])
-                obj += evaluate(gfrm.losses[j], X[i,j], gfrm.A[i,j])
-            end
+            #objs[Threads.threadid()]
+            obj +=
+                evaluate(gfrm.losses[j],
+                         Float64[X[i,j] for i in gfrm.observed_examples[j]],
+                         gfrm.A[gfrm.observed_examples[j],j])
         end
-        return obj
+        return @show obj # sum(objs)
     end
 
     ## Grad of f
-    function grad_f(X)
-        #X = Array(X)
-        g = Array(Float64,nobs)
-        iobs = 1
+    g = Array(Float64,nobs) # working variable for computing gradient; grad_f mutates this
+    function grad_f(X::LowRankOperator)
+        X = Array(X)
+        #Threads.@threads
         for j=1:n
-            lj = gfrm.losses[j]
-            for i=gfrm.observed_examples[j]
-                g[iobs] = grad(lj, X[i,j], gfrm.A[i,j])
-                iobs += 1
-            end
+            ii = startobsj[j]:(startobsj[j+1]-1)
+            g[ii] = grad(gfrm.losses[j],
+                         Float64[X[i,j] for i in gfrm.observed_examples[j]],
+                         gfrm.A[gfrm.observed_examples[j],j])
         end
-        # return G = A'*g as a sparse array
-        return Array(IndexedLowRankOperator(indexing_operator, g))
+        # return G = A'*g as a sparse matrix
+        @show g
+        G = Array(IndexedLowRankOperator(indexing_operator, g))
+        return G
     end
 
     const_nucnorm(X) = alpha # we'll always saturate the constraint, don't bother computing it
     # returns solution, optval of min <G, Delta> st ||Delta||_* \leq alpha
-    function min_lin_st_nucnorm_sketched(G, alpha, tol::Float64 = fenchel_tol)
+    function min_lin_st_nucnorm_sketched(G::SparseMatrixCSC, alpha, tol::Float64 = fenchel_tol)
         u,s,v = mysvds(G, nsv=1, tol=tol)
         return LowRankOperator(-alpha*u, v, transpose = (:N, :T)), -alpha*s[1]
     end

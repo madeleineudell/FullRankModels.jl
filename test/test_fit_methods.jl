@@ -5,7 +5,7 @@ using Convex
 
 srand(1)
 # parameters
-m, n, k = 100, 100, 3
+m, n, k = 5, 4, 2
 
 # generate data
 X0 = randn(m,k)
@@ -25,16 +25,16 @@ gfrm1 = GFRM(A, losses, reg, k, observed_features, observed_examples,
 	zeros(m,n), zeros(m+n,m+n))
 gfrm2 = gfrm1
 
-params = FrankWolfeParams(maxiters = 20, reltol = 1e-10, stepsize = DecreasingStepSize());
+params = FrankWolfeParams(maxiters = 3, reltol = 1e-10, stepsize = DecreasingStepSize());
 
 println("thin frank wolfe")
 
-@time X_thin, ch = fit_thin!(gfrm2, params)
-@time X_thin, ch = fit_thin!(gfrm2, params)
+@time X_thin, ch = fit_thin!(gfrm2, copy(params))
+@time X_thin, ch = fit_thin!(gfrm2, copy(params))
 
 println("sketched frank wolfe")
 
-@time X_sketched, ch = fit_sketch!(gfrm1, params)
-@time X_sketched, ch = fit_sketch!(gfrm1, params)
+@time X_sketched, ch = fit_sketch!(gfrm1, copy(params))
+@time X_sketched, ch = fit_sketch!(gfrm1, copy(params))
 
 @show norm(Array(X_thin) - Array(X_sketched))

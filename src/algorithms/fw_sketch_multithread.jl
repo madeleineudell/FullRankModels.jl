@@ -34,19 +34,15 @@ function fit_sketch!(gfrm::GFRM, params::FrankWolfeParams = FrankWolfeParams();
     startobsj = cumsum(vcat(1, nobsj))
     nobs = sum(nobsj)
     obs = Array(Int, nobs)
-    # iobs = 1
+
     Threads.@threads for j=1:n
         obs[startobsj[j]:(startobsj[j+1]-1)] = m*(j-1) + gfrm.observed_examples[j]
-        # for i=gfrm.observed_examples[j]
-        #     obs[iobs] = m*(j-1) + i
-        #     iobs += 1
-        # end
     end
     indexing_operator = IndexingOperator(m, n, obs)
     @assert size(indexing_operator, 1) == nobs
     @assert length(z) == nobs
 
-    function f(z)
+    function f(z::Array{Float64,1})
         objs = zeros(Threads.nthreads())
         # println("obj")
         # @time
@@ -60,9 +56,8 @@ function fit_sketch!(gfrm::GFRM, params::FrankWolfeParams = FrankWolfeParams();
     end
 
     ## Grad of f
-    function grad_f(z;
-                    g = Array(Float64, size(z)))
-        iobs = 1
+    g = Array(Float64,nobs) # working variable for computing gradient; grad_f mutates this
+    function grad_f(z::Array{Float64,1})
         # println("grad")
         # @time
         Threads.@threads for j=1:n
@@ -71,7 +66,7 @@ function fit_sketch!(gfrm::GFRM, params::FrankWolfeParams = FrankWolfeParams();
         end
         # return G = A'*g
         # LowRankOperator(indexing_operator, g, transpose = Symbol[:T, :N])
-        # IndexedLowRankOperator(indexing_operator, g)
+        @show g
         return IndexedLowRankOperator(indexing_operator, g)
     end
 
