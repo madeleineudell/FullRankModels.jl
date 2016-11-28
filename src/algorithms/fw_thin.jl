@@ -62,7 +62,6 @@ function fit_thin!(gfrm::GFRM, params::FrankWolfeParams = FrankWolfeParams();
     ## Grad of f
     g = Array(Float64,nobs) # working variable for computing gradient; grad_f mutates this
     function grad_f(X::LowRankOperator)
-        X = Array(X)
         #Threads.@threads
         for j=1:n
             ii = startobsj[j]:(startobsj[j+1]-1)
@@ -71,7 +70,6 @@ function fit_thin!(gfrm::GFRM, params::FrankWolfeParams = FrankWolfeParams();
                          gfrm.A[gfrm.observed_examples[j],j])
         end
         # return G = A'*g as a sparse matrix
-        @show g
         G = Array(IndexedLowRankOperator(indexing_operator, g))
         return G
     end

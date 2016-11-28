@@ -27,14 +27,20 @@ gfrm2 = gfrm1
 
 params = FrankWolfeParams(maxiters = 3, reltol = 1e-10, stepsize = DecreasingStepSize());
 
+# println("frank wolfe")
+#
+# @time X_fw, ch = fit_fw!(gfrm2, copy(params))
+# @time X_fw, ch = fit_fw!(gfrm2, copy(params))
+
 println("thin frank wolfe")
 
 @time X_thin, ch = fit_thin!(gfrm2, copy(params))
-@time X_thin, ch = fit_thin!(gfrm2, copy(params))
+# @time X_thin, ch = fit_thin!(gfrm2, copy(params))
 
 println("sketched frank wolfe")
 
 @time X_sketched, ch = fit_sketch!(gfrm1, copy(params))
-@time X_sketched, ch = fit_sketch!(gfrm1, copy(params))
+# @time X_sketched, ch = fit_sketch!(gfrm1, copy(params))
 
+# @show norm(Array(X_fw) - Array(X_sketched))
 @show norm(Array(X_thin) - Array(X_sketched))

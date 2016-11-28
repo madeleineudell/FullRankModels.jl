@@ -66,7 +66,6 @@ function fit_sketch!(gfrm::GFRM, params::FrankWolfeParams = FrankWolfeParams();
         end
         # return G = A'*g
         # LowRankOperator(indexing_operator, g, transpose = Symbol[:T, :N])
-        @show g
         return IndexedLowRankOperator(indexing_operator, g)
     end
 
